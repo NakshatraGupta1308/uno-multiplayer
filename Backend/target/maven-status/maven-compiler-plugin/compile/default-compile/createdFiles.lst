@@ -1,0 +1,9 @@
+com\uno\model\GameState.class
+com\uno\App.class
+com\uno\model\Player.class
+com\uno\service\RoomService.class
+com\uno\model\GameRoom.class
+com\uno\service\GameService.class
+com\uno\config\WebSocketConfig.class
+com\uno\controller\GameController.class
+com\uno\model\Card.class
