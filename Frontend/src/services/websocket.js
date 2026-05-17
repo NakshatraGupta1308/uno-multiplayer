@@ -2,43 +2,56 @@ import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 
 let client = null
-const subscriptions = {}
+let connected = false
+let pendingCallbacks = []
 
 export function connect(onConnected) {
+  if (connected) {
+    onConnected()
+    return
+  }
+
+  if (client) {
+    pendingCallbacks.push(onConnected)
+    return
+  }
+
+  pendingCallbacks.push(onConnected)
+
   client = new Client({
     webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
     onConnect: () => {
       console.log('WebSocket connected')
-      onConnected()
+      connected = true
+      pendingCallbacks.forEach(cb => cb())
+      pendingCallbacks = []
     },
-    onDisconnect: () => console.log('WebSocket disconnected'),
+    onDisconnect: () => {
+      console.log('WebSocket disconnected')
+      connected = false
+      client = null
+    },
     onStompError: (frame) => console.error('STOMP error', frame),
+    reconnectDelay: 5000,
   })
+
   client.activate()
 }
 
 export function disconnect() {
-  if (client) client.deactivate()
+  // no-op: keep connection alive across pages
 }
 
 export function subscribe(destination, callback) {
-  if (!client) return
+  if (!client || !connected) return
   const sub = client.subscribe(destination, (message) => {
     callback(JSON.parse(message.body))
   })
-  subscriptions[destination] = sub
   return sub
 }
 
-export function unsubscribe(destination) {
-  if (subscriptions[destination]) {
-    subscriptions[destination].unsubscribe()
-    delete subscriptions[destination]
-  }
-}
-
 export function send(destination, body) {
-  if (!client) return
+  if (!client || !connected) return
   client.publish({
     destination: `/app${destination}`,
     body: JSON.stringify(body),

@@ -5,18 +5,21 @@ export default function RoomPage({ playerId, playerName, roomId, onGameStart, on
   const [room, setRoom] = useState(null)
 
   useEffect(() => {
-    connect(() => {
-      subscribe(`/topic/room/${roomId}`, (data) => {
-        setRoom(data)
-        if (data.gameStarted) onGameStart()
-      })
-      setTimeout(() => send('/room.getState', { roomId }), 100)
+  connect(() => {
+    subscribe(`/topic/room/${roomId}`, (data) => {
+      setRoom(data)
     })
-  }, [roomId])
+    subscribe(`/topic/game/${roomId}`, (data) => {
+      if (data) onGameStart()
+    })
+    setTimeout(() => send('/room.getState', { roomId }), 100)
+  })
+}, [roomId])
 
   const handleStart = () => {
-    send('/game.start', { roomId })
-  }
+  console.log('Sending start game for room:', roomId)
+  send('/game.start', { roomId })
+}
 
   const isHost = room?.players?.[0]?.id === playerId
 

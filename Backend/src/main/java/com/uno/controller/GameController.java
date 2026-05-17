@@ -87,6 +87,14 @@ public class GameController {
      GameRoom room = roomService.getRoom(roomId);
             if (room != null) {
         messaging.convertAndSend("/topic/room/" + roomId, room);
+        }
     }
-}
+    @MessageMapping("/game.getState")
+    public void getGameState(@Payload Map<String, String> payload) {
+        String roomId = payload.get("roomId");
+        GameState state = gameService.getState(roomId);
+            if (state != null) {
+        messaging.convertAndSend("/topic/game/" + roomId, state);
+        }
+    }
 }
