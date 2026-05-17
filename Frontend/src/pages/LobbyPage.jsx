@@ -18,18 +18,24 @@ export default function LobbyPage({ playerId, onJoinRoom }) {
 
   const handleCreate = () => {
     if (!playerName.trim() || !roomName.trim()) return
-    send('/lobby.createRoom', { roomName, playerId, playerName })
-    subscribe(`/topic/room/${playerId}`, (room) => {
-      onJoinRoom(room.id, playerName)
+    subscribe('/topic/lobby', (updatedRooms) => {
+      const myRoom = updatedRooms.find(r =>
+        r.players.some(p => p.id === playerId)
+      )
+      if (myRoom) {
+        subscribe(`/topic/room/${myRoom.id}`, () => {})
+        onJoinRoom(myRoom.id, playerName)
+      }
     })
+    send('/lobby.createRoom', { roomName, playerId, playerName })
   }
 
   const handleJoin = (roomId) => {
     if (!playerName.trim()) return
-    send('/lobby.joinRoom', { roomId, playerId, playerName })
     subscribe(`/topic/room/${roomId}`, (room) => {
       onJoinRoom(room.id, playerName)
     })
+    send('/lobby.joinRoom', { roomId, playerId, playerName })
   }
 
   return (

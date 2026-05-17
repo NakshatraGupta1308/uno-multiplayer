@@ -80,4 +80,13 @@ public class GameController {
         );
         messaging.convertAndSend("/topic/game/" + payload.get("roomId"), state);
     }
+
+    @MessageMapping("/room.getState")
+    public void getRoomState(@Payload Map<String, String> payload) {
+     String roomId = payload.get("roomId");
+     GameRoom room = roomService.getRoom(roomId);
+            if (room != null) {
+        messaging.convertAndSend("/topic/room/" + roomId, room);
+    }
+}
 }
