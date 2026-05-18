@@ -201,7 +201,7 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
   }
 
   const cardCount = myPlayer?.hand?.length || 1
-  const cardWidth = Math.min(70, Math.floor((window.innerWidth - 48) / cardCount))
+  const cardWidth = Math.min(70, Math.floor((window.innerWidth - 48) / cardCount) - 4)
 
   return (
     <div style={styles.container}>
@@ -227,14 +227,14 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
         ))}
       </div>
 
-      {/* Game Log */}
-      {gameLog.length > 0 && (
-        <div style={{ ...styles.gameLog, width: isMobile ? 130 : 220 }}>
-          {gameLog.map((entry, i) => (
-            <div key={i} style={{ ...styles.logEntry, opacity: 1 - i * 0.1, fontSize: isMobile ? 10 : 12 }}>
-              {entry}
-            </div>
-          ))}
+      {/* Game Log -- hide on mobile */}
+      {gameLog.length > 0 && !isMobile && (
+      <div style={{ ...styles.gameLog, width: 220 }}>
+       {gameLog.map((entry, i) => (
+         <div key={i} style={{ ...styles.logEntry, opacity: 1 - i * 0.1, fontSize: 12 }}>
+          {entry}
+         </div>
+     ))}
         </div>
       )}
 
@@ -295,7 +295,7 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
 }
 
 const styles = {
-  container: { minHeight: '100vh', background: '#1a6b3c', display: 'flex', flexDirection: 'column', fontFamily: 'sans-serif' },
+  container: { minHeight: '100vh', background: '#1a6b3c', display: 'flex', flexDirection: 'column', fontFamily: 'sans-serif', overflowX: 'hidden', maxWidth: '100vw' },
   center: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif' },
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'rgba(0,0,0,0.3)' },
   title: { color: '#fff', margin: 0, fontSize: 20 },
