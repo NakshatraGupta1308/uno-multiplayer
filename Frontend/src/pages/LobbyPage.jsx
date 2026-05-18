@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { connect, subscribe, send, disconnect } from '../services/websocket'
+import { connect, subscribe, send } from '../services/websocket'
 
 export default function LobbyPage({ playerId, onJoinRoom }) {
   const [rooms, setRooms] = useState([])
@@ -13,7 +13,6 @@ export default function LobbyPage({ playerId, onJoinRoom }) {
       subscribe('/topic/lobby', (data) => setRooms(data))
       send('/lobby.getRooms', {})
     })
-    return () => disconnect()
   }, [])
 
   const handleCreate = () => {
@@ -40,7 +39,8 @@ export default function LobbyPage({ playerId, onJoinRoom }) {
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.title}>UNO Multiplayer</h1>
+      <h1 style={styles.title}>KARD</h1>
+      <p style={styles.tagline}>The multiplayer card game</p>
 
       <div style={styles.card}>
         <h2 style={styles.subtitle}>Join or Create a Game</h2>
@@ -86,7 +86,8 @@ export default function LobbyPage({ playerId, onJoinRoom }) {
 
 const styles = {
   container: { maxWidth: 600, margin: '40px auto', padding: '0 20px', fontFamily: 'sans-serif' },
-  title: { textAlign: 'center', fontSize: 36, color: '#e74c3c', marginBottom: 24 },
+  title: { textAlign: 'center', fontSize: 48, color: '#e74c3c', marginBottom: 4, letterSpacing: 6, fontWeight: 'bold' },
+  tagline: { textAlign: 'center', color: '#888', fontSize: 14, marginBottom: 24 },
   subtitle: { fontSize: 18, marginBottom: 16, color: '#333' },
   card: { background: '#fff', borderRadius: 12, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' },
   input: { padding: '10px 14px', borderRadius: 8, border: '1px solid #ddd', fontSize: 14, marginBottom: 12, width: '100%', boxSizing: 'border-box' },

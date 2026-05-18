@@ -5,27 +5,27 @@ export default function RoomPage({ playerId, playerName, roomId, onGameStart, on
   const [room, setRoom] = useState(null)
 
   useEffect(() => {
-  connect(() => {
-    subscribe(`/topic/room/${roomId}`, (data) => {
-      setRoom(data)
+    connect(() => {
+      subscribe(`/topic/room/${roomId}`, (data) => {
+        setRoom(data)
+      })
+      subscribe(`/topic/game/${roomId}`, (data) => {
+        if (data) onGameStart()
+      })
+      setTimeout(() => send('/room.getState', { roomId }), 100)
     })
-    subscribe(`/topic/game/${roomId}`, (data) => {
-      if (data) onGameStart()
-    })
-    setTimeout(() => send('/room.getState', { roomId }), 100)
-  })
-}, [roomId])
+  }, [roomId])
 
   const handleStart = () => {
-  console.log('Sending start game for room:', roomId)
-  send('/game.start', { roomId })
-}
+    console.log('Sending start game for room:', roomId)
+    send('/game.start', { roomId })
+  }
 
   const isHost = room?.players?.[0]?.id === playerId
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.title}>UNO Multiplayer</h1>
+      <h1 style={styles.title}>KARD</h1>
 
       <div style={styles.card}>
         <h2 style={styles.subtitle}>Room: {room?.name ?? roomId}</h2>
@@ -64,7 +64,7 @@ export default function RoomPage({ playerId, playerName, roomId, onGameStart, on
 
 const styles = {
   container: { maxWidth: 600, margin: '40px auto', padding: '0 20px', fontFamily: 'sans-serif' },
-  title: { textAlign: 'center', fontSize: 36, color: '#e74c3c', marginBottom: 24 },
+  title: { textAlign: 'center', fontSize: 48, color: '#e74c3c', marginBottom: 24, letterSpacing: 6, fontWeight: 'bold' },
   subtitle: { fontSize: 22, marginBottom: 4, color: '#333' },
   roomId: { color: '#888', fontSize: 13, marginBottom: 20 },
   card: { background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' },
