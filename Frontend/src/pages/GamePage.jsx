@@ -116,7 +116,7 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
         if (data.gameOver) {
           const winner = data.players.find(p => p.id === data.winnerId)
           setGameLog(log => [`🏆 ${winner?.name} won the game!`, ...log])
-          setTimeout(onGameEnd, 3000)
+          setTimeout(onGameEnd, 5000)
         }
       })
       setTimeout(() => send('/game.getState', { roomId }), 100)
@@ -163,13 +163,31 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
     </div>
   )
 
-  if (state.gameOver) return (
-    <div style={styles.center}>
-      <h1 style={{ color: '#e74c3c' }}>Game Over!</h1>
-      <p>{state.winnerId === playerId ? '🎉 You won!' : 'Better luck next time!'}</p>
-      <p style={{ color: '#888' }}>Returning to lobby...</p>
-    </div>
-  )
+  if (state.gameOver) {
+    const winner = state.players.find(p => p.id === state.winnerId)
+    const iWon = state.winnerId === playerId
+    return (
+      <div style={styles.winScreen}>
+        <div style={styles.winCard}>
+          <div style={styles.winEmoji}>{iWon ? '🏆' : '😔'}</div>
+          <h1 style={{ ...styles.winTitle, color: iWon ? '#f1c40f' : '#e74c3c' }}>
+            {iWon ? 'You Won!' : 'You Lost!'}
+          </h1>
+          <p style={styles.winSubtitle}>
+            {iWon ? 'Congratulations!' : `${winner?.name} won this round`}
+          </p>
+          <div style={styles.winLog}>
+            {gameLog.map((entry, i) => (
+              <div key={i} style={{ ...styles.logEntry, opacity: 1 - i * 0.1 }}>
+                {entry}
+              </div>
+            ))}
+          </div>
+          <p style={styles.winRedirect}>Returning to lobby in 5 seconds...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={styles.container}>
@@ -285,4 +303,11 @@ const styles = {
   hand: { display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 },
   unoSection: { display: 'flex', justifyContent: 'center', padding: '12px 0' },
   unoBtn: { padding: '14px 48px', background: '#e74c3c', color: '#fff', border: '4px solid #fff', borderRadius: 50, fontSize: 24, fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,0.4)', letterSpacing: 2 },
+  winScreen: { minHeight: '100vh', background: '#1a6b3c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' },
+  winCard: { background: 'rgba(0,0,0,0.7)', borderRadius: 20, padding: '48px 64px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', minWidth: 340 },
+  winEmoji: { fontSize: 80, marginBottom: 16 },
+  winTitle: { fontSize: 48, fontWeight: 'bold', margin: '0 0 8px' },
+  winSubtitle: { color: '#aaa', fontSize: 18, margin: '0 0 24px' },
+  winLog: { background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: '12px 16px', marginBottom: 24, maxHeight: 200, overflow: 'hidden' },
+  winRedirect: { color: '#888', fontSize: 13 },
 }
