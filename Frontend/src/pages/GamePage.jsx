@@ -34,7 +34,7 @@ function ColorPicker({ onPick }) {
   )
 }
 
-function CardComponent({ card, onClick, disabled, invalid, width }) {
+function CardComponent({ card, onClick, disabled, invalid, width, animate }) {
   const bg = invalid ? '#c0392b' : (COLOR_MAP[card.color] || '#8e44ad')
   const cardWidth = width || 70
   const cardHeight = Math.floor(cardWidth * 1.5)
@@ -67,6 +67,7 @@ function CardComponent({ card, onClick, disabled, invalid, width }) {
         transition: 'transform 0.1s, background 0.1s',
         flexShrink: 0,
         transform: invalid ? 'translateY(-8px)' : 'none',
+        animation: animate ? 'cardPop 0.3s ease-out' : 'cardSlideIn 0.2s ease-out',
       }}
       onMouseEnter={e => { if (!disabled && !invalid) e.currentTarget.style.transform = 'translateY(-8px)' }}
       onMouseLeave={e => { if (!invalid) e.currentTarget.style.transform = 'translateY(0)' }}
@@ -251,8 +252,8 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
           <p style={styles.pileLabel}>Draw</p>
         </div>
         {topCard && (
-          <div>
-            <CardComponent card={topCard} disabled width={70} />
+          <div key={topCard.id}>
+            <CardComponent card={topCard} disabled width={70} animate />
             <p style={styles.pileLabel}>Top Card</p>
           </div>
         )}
