@@ -78,17 +78,44 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
   const [pendingCard, setPendingCard] = useState(null)
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [unoAnnouncement, setUnoAnnouncement] = useState(null)
+  const [gameLog, setGameLog] = useState([])
 
   useEffect(() => {
     connect(() => {
       subscribe(`/topic/game/${roomId}`, (data) => {
-        setGameState(data)
+        setGameState(prev => {
+          if (prev) {
+            const prevPlayer = prev.players[prev.currentPlayerIndex]
+            const currPlayer = data.players[prev.currentPlayerIndex]
+            if (prevPlayer && currPlayer) {
+              const prevCardCount = prevPlayer.hand.length
+              const currCardCount = currPlayer.hand.length
+              const topCard = data.discardPile[data.discardPile.length - 1]
+              const prevTop = prev.discardPile[prev.discardPile.length - 1]
+
+              if (currCardCount < prevCardCount && topCard?.id !== prevTop?.id) {
+                const cardLabel = topCard.type === 'NUMBER'
+                  ? `${topCard.color} ${topCard.number}`
+                  : `${topCard.color} ${topCard.type}`
+                setGameLog(log => [`${prevPlayer.name} played ${cardLabel}`, ...log].slice(0, 8))
+              } else if (currCardCount > prevCardCount) {
+                setGameLog(log => [`${prevPlayer.name} drew a card`, ...log].slice(0, 8))
+              }
+            }
+          }
+          return data
+        })
+
         const unoPlayer = data.players.find(p => p.saidUno)
         if (unoPlayer) {
           setUnoAnnouncement(unoPlayer.name)
           setTimeout(() => setUnoAnnouncement(null), 2000)
         }
-        if (data.gameOver) setTimeout(onGameEnd, 3000)
+        if (data.gameOver) {
+          const winner = data.players.find(p => p.id === data.winnerId)
+          setGameLog(log => [`🏆 ${winner?.name} won the game!`, ...log])
+          setTimeout(onGameEnd, 3000)
+        }
       })
       setTimeout(() => send('/game.getState', { roomId }), 100)
     })
@@ -157,6 +184,17 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
         ))}
       </div>
 
+      {/* Game Log */}
+      {gameLog.length > 0 && (
+        <div style={styles.gameLog}>
+          {gameLog.map((entry, i) => (
+            <div key={i} style={{ ...styles.logEntry, opacity: 1 - i * 0.1 }}>
+              {entry}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Play area */}
       <div style={styles.playArea}>
         <div style={styles.drawPile} onClick={handleDraw}>
@@ -222,6 +260,8 @@ const styles = {
   otherName: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
   cardCount: { color: '#aed6f1', fontSize: 12 },
   unoBadge: { background: '#e74c3c', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold' },
+  gameLog: { position: 'fixed', right: 16, top: 80, background: 'rgba(0,0,0,0.5)', borderRadius: 10, padding: '12px 16px', width: 220, maxHeight: 280, overflow: 'hidden' },
+  logEntry: { color: '#fff', fontSize: 12, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.1)' },
   playArea: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 40, flex: 1, padding: 24 },
   drawPile: { display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' },
   deckCard: { width: 70, height: 105, background: '#2c3e50', borderRadius: 8, border: '3px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: 'white' },
