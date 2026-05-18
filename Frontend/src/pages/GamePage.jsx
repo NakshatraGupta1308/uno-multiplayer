@@ -77,16 +77,22 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
   const [state, setGameState] = useState(null)
   const [pendingCard, setPendingCard] = useState(null)
   const [showColorPicker, setShowColorPicker] = useState(false)
+  const [unoAnnouncement, setUnoAnnouncement] = useState(null)
 
   useEffect(() => {
-  connect(() => {
-    subscribe(`/topic/game/${roomId}`, (data) => {
-      setGameState(data)
-      if (data.gameOver) setTimeout(onGameEnd, 3000)
+    connect(() => {
+      subscribe(`/topic/game/${roomId}`, (data) => {
+        setGameState(data)
+        const unoPlayer = data.players.find(p => p.saidUno)
+        if (unoPlayer) {
+          setUnoAnnouncement(unoPlayer.name)
+          setTimeout(() => setUnoAnnouncement(null), 2000)
+        }
+        if (data.gameOver) setTimeout(onGameEnd, 3000)
+      })
+      setTimeout(() => send('/game.getState', { roomId }), 100)
     })
-    setTimeout(() => send('/game.getState', { roomId }), 100)
-  })
-}, [roomId])
+  }, [roomId])
 
   const myPlayer = state?.players?.find(p => p.id === playerId)
   const isMyTurn = state?.players?.[state.currentPlayerIndex]?.id === playerId
@@ -146,19 +152,17 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
           <div key={p.id} style={styles.otherPlayer}>
             <span style={styles.otherName}>{p.name}</span>
             <span style={styles.cardCount}>{p.hand.length} cards</span>
+            {p.saidUno && <span style={styles.unoBadge}>UNO!</span>}
           </div>
         ))}
       </div>
 
       {/* Play area */}
       <div style={styles.playArea}>
-        {/* Draw pile */}
         <div style={styles.drawPile} onClick={handleDraw}>
           <div style={styles.deckCard}>🂠</div>
           <p style={styles.pileLabel}>Draw</p>
         </div>
-
-        {/* Top card */}
         {topCard && (
           <div>
             <CardComponent card={topCard} disabled />
@@ -169,6 +173,25 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
 
       {/* Color picker */}
       {showColorPicker && <ColorPicker onPick={handleColorPick} />}
+
+      {/* UNO announcement overlay */}
+      {unoAnnouncement && (
+        <div style={styles.unoAnnouncement}>
+          🃏 {unoAnnouncement} says UNO!
+        </div>
+      )}
+
+      {/* UNO Button */}
+      {myPlayer?.hand?.length === 1 && !state.gameOver && (
+        <div style={styles.unoSection}>
+          <button
+            style={styles.unoBtn}
+            onClick={() => send('/game.sayUno', { roomId, playerId })}
+          >
+            🃏 UNO!
+          </button>
+        </div>
+      )}
 
       {/* My hand */}
       <div style={styles.handSection}>
@@ -198,12 +221,16 @@ const styles = {
   otherPlayer: { background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '10px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 },
   otherName: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
   cardCount: { color: '#aed6f1', fontSize: 12 },
+  unoBadge: { background: '#e74c3c', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold' },
   playArea: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 40, flex: 1, padding: 24 },
   drawPile: { display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' },
   deckCard: { width: 70, height: 105, background: '#2c3e50', borderRadius: 8, border: '3px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: 'white' },
   pileLabel: { color: '#fff', textAlign: 'center', margin: '8px 0 0', fontSize: 12 },
   colorPicker: { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,0.4)', zIndex: 100 },
+  unoAnnouncement: { position: 'fixed', top: '40%', left: '50%', transform: 'translate(-50%,-50%)', background: '#e74c3c', color: '#fff', fontSize: 36, fontWeight: 'bold', padding: '24px 48px', borderRadius: 20, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', zIndex: 200, letterSpacing: 2 },
   handSection: { background: 'rgba(0,0,0,0.3)', padding: '16px 24px' },
   handLabel: { color: '#fff', margin: '0 0 12px', fontSize: 14 },
   hand: { display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 },
+  unoSection: { display: 'flex', justifyContent: 'center', padding: '12px 0' },
+  unoBtn: { padding: '14px 48px', background: '#e74c3c', color: '#fff', border: '4px solid #fff', borderRadius: 50, fontSize: 24, fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,0.4)', letterSpacing: 2 },
 }

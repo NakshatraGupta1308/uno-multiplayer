@@ -97,4 +97,18 @@ public class GameController {
         messaging.convertAndSend("/topic/game/" + roomId, state);
         }
     }
+
+    @MessageMapping("/game.sayUno")
+    public void sayUno(@Payload Map<String, String> payload) {
+    String roomId = payload.get("roomId");
+    String playerId = payload.get("playerId");
+    GameState state = gameService.getState(roomId);
+    if (state != null) {
+        state.getPlayers().stream()
+            .filter(p -> p.getId().equals(playerId))
+            .findFirst()
+            .ifPresent(p -> p.setSaidUno(true));
+        messaging.convertAndSend("/topic/game/" + roomId, state);
+        }
+    }
 }
