@@ -19,7 +19,7 @@ export function connect(onConnected) {
   pendingCallbacks.push(onConnected)
 
   client = new Client({
-    webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+    webSocketFactory: () => new SockJS('https://uno-multiplayer-backend.onrender.com/ws'),
     onConnect: () => {
       console.log('WebSocket connected')
       connected = true
