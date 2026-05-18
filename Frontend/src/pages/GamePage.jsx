@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { connect, subscribe, send } from '../services/websocket'
+import { playCardSound, playDrawSound, playUnoSound, playWinSound, playInvalidSound } from '../services/sounds'
 
 const COLOR_MAP = {
   RED: '#e74c3c',
@@ -126,6 +127,7 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
         if (data.gameOver) {
           const winner = data.players.find(p => p.id === data.winnerId)
           setGameLog(log => [`🏆 ${winner?.name} won the game!`, ...log])
+          playWinSound()
           setTimeout(onGameEnd, 5000)
         }
       })
@@ -142,6 +144,7 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
     if (card.color === 'WILD') {
       setPendingCard(card)
       setShowColorPicker(true)
+      playCardSound()
     } else {
       const top = state.discardPile[state.discardPile.length - 1]
       const valid = card.color === 'WILD'
@@ -150,10 +153,12 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
         || (card.type !== 'NUMBER' && card.type === top.type)
       if (!valid) {
         setInvalidCard(card.id)
+        playInvalidSound()
         setTimeout(() => setInvalidCard(null), 600)
         return
       }
       send('/game.playCard', { roomId, playerId, cardId: card.id, chosenColor: null })
+      playCardSound()
     }
   }
 
@@ -166,6 +171,7 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
   const handleDraw = () => {
     if (!isMyTurn) return
     send('/game.drawCard', { roomId, playerId })
+    playDrawSound()
   }
 
   if (!state) return (
@@ -227,14 +233,14 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
         ))}
       </div>
 
-      {/* Game Log -- hide on mobile */}
+      {/* Game Log -- hidden on mobile */}
       {gameLog.length > 0 && !isMobile && (
-      <div style={{ ...styles.gameLog, width: 220 }}>
-       {gameLog.map((entry, i) => (
-         <div key={i} style={{ ...styles.logEntry, opacity: 1 - i * 0.1, fontSize: 12 }}>
-          {entry}
-         </div>
-     ))}
+        <div style={styles.gameLog}>
+          {gameLog.map((entry, i) => (
+            <div key={i} style={{ ...styles.logEntry, opacity: 1 - i * 0.1, fontSize: 12 }}>
+              {entry}
+            </div>
+          ))}
         </div>
       )}
 
@@ -267,7 +273,10 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
         <div style={styles.unoSection}>
           <button
             style={styles.unoBtn}
-            onClick={() => send('/game.sayUno', { roomId, playerId })}
+            onClick={() => {
+              send('/game.sayUno', { roomId, playerId })
+              playUnoSound()
+            }}
           >
             🃏 UNO!
           </button>
@@ -305,7 +314,7 @@ const styles = {
   otherName: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
   cardCount: { color: '#aed6f1', fontSize: 11 },
   unoBadge: { background: '#e74c3c', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold' },
-  gameLog: { position: 'fixed', right: 8, top: 60, background: 'rgba(0,0,0,0.5)', borderRadius: 10, padding: '8px 12px', maxHeight: 200, overflow: 'hidden' },
+  gameLog: { position: 'fixed', right: 8, top: 60, background: 'rgba(0,0,0,0.5)', borderRadius: 10, padding: '8px 12px', width: 220, maxHeight: 200, overflow: 'hidden' },
   logEntry: { color: '#fff', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.1)' },
   playArea: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, flex: 1, padding: 16 },
   drawPile: { display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' },
