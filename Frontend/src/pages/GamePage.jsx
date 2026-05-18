@@ -82,46 +82,54 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
   const [gameLog, setGameLog] = useState([])
   const [invalidCard, setInvalidCard] = useState(null)
 
-  useEffect(() => {
-    connect(() => {
-      subscribe(`/topic/game/${roomId}`, (data) => {
-        setGameState(prev => {
-          if (prev) {
-            const prevPlayer = prev.players[prev.currentPlayerIndex]
-            const currPlayer = data.players[prev.currentPlayerIndex]
-            if (prevPlayer && currPlayer) {
-              const prevCardCount = prevPlayer.hand.length
-              const currCardCount = currPlayer.hand.length
-              const topCard = data.discardPile[data.discardPile.length - 1]
-              const prevTop = prev.discardPile[prev.discardPile.length - 1]
-
-              if (currCardCount < prevCardCount && topCard?.id !== prevTop?.id) {
-                const cardLabel = topCard.type === 'NUMBER'
-                  ? `${topCard.color} ${topCard.number}`
-                  : `${topCard.color} ${topCard.type}`
-                setGameLog(log => [`${prevPlayer.name} played ${cardLabel}`, ...log].slice(0, 8))
-              } else if (currCardCount > prevCardCount) {
-                setGameLog(log => [`${prevPlayer.name} drew a card`, ...log].slice(0, 8))
-              }
-            }
-          }
-          return data
-        })
-
+useEffect(() => {
+  connect(() => {
+    subscribe(`/topic/game/${roomId}`, (data) => {
+      setGameState(prev => {
+        // UNO announcement -- only trigger when it newly becomes true
         const unoPlayer = data.players.find(p => p.saidUno)
-        if (unoPlayer) {
+        const prevUnoPlayer = prev?.players?.find(p => p.saidUno)
+        if (unoPlayer && unoPlayer.id !== prevUnoPlayer?.id) {
           setUnoAnnouncement(unoPlayer.name)
           setTimeout(() => setUnoAnnouncement(null), 2000)
         }
-        if (data.gameOver) {
-          const winner = data.players.find(p => p.id === data.winnerId)
-          setGameLog(log => [`🏆 ${winner?.name} won the game!`, ...log])
-          setTimeout(onGameEnd, 5000)
+
+        if (prev) {
+          const prevPlayer = prev.players[prev.currentPlayerIndex]
+          const currPlayer = data.players[prev.currentPlayerIndex]
+          if (prevPlayer && currPlayer) {
+            const prevCardCount = prevPlayer.hand.length
+            const currCardCount = currPlayer.hand.length
+            const topCard = data.discardPile[data.discardPile.length - 1]
+            const prevTop = prev.discardPile[prev.discardPile.length - 1]
+
+            if (currCardCount < prevCardCount && topCard?.id !== prevTop?.id) {
+              const cardLabel = topCard.type === 'NUMBER'
+               ? `${topCard.color} ${topCard.number}`
+                : topCard.type === 'SKIP' ? `${topCard.color} Skip`
+                : topCard.type === 'REVERSE' ? `${topCard.color} Reverse`
+                : topCard.type === 'DRAW_TWO' ? `${topCard.color} +2`
+                : topCard.type === 'WILD' ? 'Wild'
+                : topCard.type === 'WILD_DRAW_FOUR' ? 'Wild +4'
+                : `${topCard.color} ${topCard.type}`
+              setGameLog(log => [`${prevPlayer.name} played ${cardLabel}`, ...log].slice(0, 8))
+            } else if (currCardCount > prevCardCount) {
+              setGameLog(log => [`${prevPlayer.name} drew a card`, ...log].slice(0, 8))
+            }
+          }
         }
+        return data
       })
-      setTimeout(() => send('/game.getState', { roomId }), 100)
+
+      if (data.gameOver) {
+        const winner = data.players.find(p => p.id === data.winnerId)
+        setGameLog(log => [`🏆 ${winner?.name} won the game!`, ...log])
+        setTimeout(onGameEnd, 5000)
+      }
     })
-  }, [roomId])
+    setTimeout(() => send('/game.getState', { roomId }), 100)
+  })
+}, [roomId])
 
   const myPlayer = state?.players?.find(p => p.id === playerId)
   const isMyTurn = state?.players?.[state.currentPlayerIndex]?.id === playerId
@@ -134,9 +142,10 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
       setShowColorPicker(true)
     } else {
       const top = state.discardPile[state.discardPile.length - 1]
-      const valid = card.color === state.currentColor
-        || card.type === top.type
-        || (card.type === 'NUMBER' && card.number === top.number)
+      const valid = card.color === 'WILD'
+  ||     card.color === state.currentColor
+  ||    (card.type === 'NUMBER' && card.number === top.number)
+  ||    (card.type !== 'NUMBER' && card.type === top.type)
       if (!valid) {
         setInvalidCard(card.id)
         setTimeout(() => setInvalidCard(null), 600)

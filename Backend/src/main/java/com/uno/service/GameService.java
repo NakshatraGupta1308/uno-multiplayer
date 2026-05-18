@@ -40,12 +40,19 @@ public class GameService {
     }
 
     public boolean isValidPlay(GameState state, Card card) {
-        Card top = state.getTopCard();
-        return card.getColor().equals("WILD")
-                || card.getColor().equals(state.getCurrentColor())
-                || card.getType().equals(top.getType())
-                || (card.getType().equals("NUMBER") && card.getNumber() == top.getNumber());
+    Card top = state.getTopCard();
+    String currentColor = state.getCurrentColor();
+
+    if (card.getColor().equals("WILD")) return true;
+    if (card.getColor().equals(currentColor)) return true;
+    if (card.getType().equals(top.getType())) {
+        if (card.getType().equals("NUMBER")) {
+            return card.getNumber() == top.getNumber();
+        }
+        return true;
     }
+    return false;
+}
 
     public GameState playCard(String roomId, String playerId, String cardId, String chosenColor) {
         GameState state = gameStates.get(roomId);
@@ -59,6 +66,7 @@ public class GameService {
         if (!isValidPlay(state, card)) throw new RuntimeException("Invalid play");
 
         player.getHand().remove(card);
+        player.setSaidUno(false);
         state.getDiscardPile().add(card);
 
         if (card.getColor().equals("WILD") && chosenColor != null) {
@@ -78,20 +86,23 @@ public class GameService {
     }
 
     public GameState drawCard(String roomId, String playerId) {
-        GameState state = gameStates.get(roomId);
-        getCurrentPlayer(state, playerId);
+    GameState state = gameStates.get(roomId);
+    getCurrentPlayer(state, playerId);
 
-        if (state.getDeck().isEmpty()) reshuffleDeck(state);
-        Card drawn = state.getDeck().remove(0);
+    if (state.getDeck().isEmpty()) reshuffleDeck(state);
+    Card drawn = state.getDeck().remove(0);
 
-        state.getPlayers().stream()
-                .filter(p -> p.getId().equals(playerId))
-                .findFirst()
-                .ifPresent(p -> p.getHand().add(drawn));
+    state.getPlayers().stream()
+            .filter(p -> p.getId().equals(playerId))
+            .findFirst()
+            .ifPresent(p -> {
+                p.getHand().add(drawn);
+                p.setSaidUno(false); // reset UNO flag when drawing
+            });
 
-        advanceTurn(state, 1);
-        return state;
-    }
+    advanceTurn(state, 1);
+    return state;
+}
 
     private void applyCardEffect(GameState state, Card card) {
         switch (card.getType()) {
