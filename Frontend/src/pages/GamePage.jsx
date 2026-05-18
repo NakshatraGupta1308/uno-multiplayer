@@ -9,8 +9,8 @@ const COLOR_MAP = {
   WILD: '#8e44ad',
 }
 
-function CardComponent({ card, onClick, disabled, small }) {
-  const bg = COLOR_MAP[card.color] || '#8e44ad'
+function CardComponent({ card, onClick, disabled, small, invalid }) {
+  const bg = invalid ? '#c0392b' : (COLOR_MAP[card.color] || '#8e44ad')
   const label = card.type === 'NUMBER'
     ? card.number
     : card.type === 'SKIP' ? '🚫'
@@ -28,8 +28,8 @@ function CardComponent({ card, onClick, disabled, small }) {
         height: small ? 75 : 105,
         background: bg,
         borderRadius: 8,
-        border: '3px solid white',
-        boxShadow: disabled ? 'none' : '0 2px 8px rgba(0,0,0,0.3)',
+        border: invalid ? '3px solid #e74c3c' : '3px solid white',
+        boxShadow: invalid ? '0 0 12px rgba(231,76,60,0.8)' : disabled ? 'none' : '0 2px 8px rgba(0,0,0,0.3)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -38,11 +38,12 @@ function CardComponent({ card, onClick, disabled, small }) {
         color: 'white',
         cursor: disabled ? 'default' : 'pointer',
         opacity: disabled ? 0.6 : 1,
-        transition: 'transform 0.1s',
+        transition: 'transform 0.1s, background 0.1s',
         flexShrink: 0,
+        transform: invalid ? 'translateY(-8px)' : 'none',
       }}
-      onMouseEnter={e => { if (!disabled) e.currentTarget.style.transform = 'translateY(-8px)' }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}
+      onMouseEnter={e => { if (!disabled && !invalid) e.currentTarget.style.transform = 'translateY(-8px)' }}
+      onMouseLeave={e => { if (!invalid) e.currentTarget.style.transform = 'translateY(0)' }}
     >
       {label}
     </div>
@@ -79,6 +80,7 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [unoAnnouncement, setUnoAnnouncement] = useState(null)
   const [gameLog, setGameLog] = useState([])
+  const [invalidCard, setInvalidCard] = useState(null)
 
   useEffect(() => {
     connect(() => {
@@ -131,6 +133,15 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
       setPendingCard(card)
       setShowColorPicker(true)
     } else {
+      const top = state.discardPile[state.discardPile.length - 1]
+      const valid = card.color === state.currentColor
+        || card.type === top.type
+        || (card.type === 'NUMBER' && card.number === top.number)
+      if (!valid) {
+        setInvalidCard(card.id)
+        setTimeout(() => setInvalidCard(null), 600)
+        return
+      }
       send('/game.playCard', { roomId, playerId, cardId: card.id, chosenColor: null })
     }
   }
@@ -241,6 +252,7 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
               card={card}
               onClick={() => handlePlayCard(card)}
               disabled={!isMyTurn}
+              invalid={invalidCard === card.id}
             />
           ))}
         </div>
