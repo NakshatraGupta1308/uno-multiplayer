@@ -9,47 +9,6 @@ const COLOR_MAP = {
   WILD: '#8e44ad',
 }
 
-function CardComponent({ card, onClick, disabled, small, invalid }) {
-  const bg = invalid ? '#c0392b' : (COLOR_MAP[card.color] || '#8e44ad')
-  const label = card.type === 'NUMBER'
-    ? card.number
-    : card.type === 'SKIP' ? '🚫'
-    : card.type === 'REVERSE' ? '🔄'
-    : card.type === 'DRAW_TWO' ? '+2'
-    : card.type === 'WILD' ? '🌈'
-    : card.type === 'WILD_DRAW_FOUR' ? '+4'
-    : card.type
-
-  return (
-    <div
-      onClick={disabled ? null : onClick}
-      style={{
-        width: small ? 50 : 70,
-        height: small ? 75 : 105,
-        background: bg,
-        borderRadius: 8,
-        border: invalid ? '3px solid #e74c3c' : '3px solid white',
-        boxShadow: invalid ? '0 0 12px rgba(231,76,60,0.8)' : disabled ? 'none' : '0 2px 8px rgba(0,0,0,0.3)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: small ? 14 : 20,
-        fontWeight: 'bold',
-        color: 'white',
-        cursor: disabled ? 'default' : 'pointer',
-        opacity: disabled ? 0.6 : 1,
-        transition: 'transform 0.1s, background 0.1s',
-        flexShrink: 0,
-        transform: invalid ? 'translateY(-8px)' : 'none',
-      }}
-      onMouseEnter={e => { if (!disabled && !invalid) e.currentTarget.style.transform = 'translateY(-8px)' }}
-      onMouseLeave={e => { if (!invalid) e.currentTarget.style.transform = 'translateY(0)' }}
-    >
-      {label}
-    </div>
-  )
-}
-
 function ColorPicker({ onPick }) {
   return (
     <div style={styles.colorPicker}>
@@ -74,6 +33,48 @@ function ColorPicker({ onPick }) {
   )
 }
 
+function CardComponent({ card, onClick, disabled, invalid, width }) {
+  const bg = invalid ? '#c0392b' : (COLOR_MAP[card.color] || '#8e44ad')
+  const cardWidth = width || 70
+  const cardHeight = Math.floor(cardWidth * 1.5)
+  const label = card.type === 'NUMBER' ? card.number
+    : card.type === 'SKIP' ? '🚫'
+    : card.type === 'REVERSE' ? '🔄'
+    : card.type === 'DRAW_TWO' ? '+2'
+    : card.type === 'WILD' ? '🌈'
+    : card.type === 'WILD_DRAW_FOUR' ? '+4'
+    : card.type
+
+  return (
+    <div
+      onClick={disabled ? null : onClick}
+      style={{
+        width: cardWidth,
+        height: cardHeight,
+        background: bg,
+        borderRadius: 6,
+        border: invalid ? '3px solid #e74c3c' : '3px solid white',
+        boxShadow: invalid ? '0 0 12px rgba(231,76,60,0.8)' : disabled ? 'none' : '0 2px 8px rgba(0,0,0,0.3)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: Math.max(10, cardWidth * 0.28),
+        fontWeight: 'bold',
+        color: 'white',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.6 : 1,
+        transition: 'transform 0.1s, background 0.1s',
+        flexShrink: 0,
+        transform: invalid ? 'translateY(-8px)' : 'none',
+      }}
+      onMouseEnter={e => { if (!disabled && !invalid) e.currentTarget.style.transform = 'translateY(-8px)' }}
+      onMouseLeave={e => { if (!invalid) e.currentTarget.style.transform = 'translateY(0)' }}
+    >
+      {label}
+    </div>
+  )
+}
+
 export default function GamePage({ playerId, roomId, onGameEnd }) {
   const [state, setGameState] = useState(null)
   const [pendingCard, setPendingCard] = useState(null)
@@ -82,54 +83,55 @@ export default function GamePage({ playerId, roomId, onGameEnd }) {
   const [gameLog, setGameLog] = useState([])
   const [invalidCard, setInvalidCard] = useState(null)
 
-useEffect(() => {
-  connect(() => {
-    subscribe(`/topic/game/${roomId}`, (data) => {
-      setGameState(prev => {
-        // UNO announcement -- only trigger when it newly becomes true
-        const unoPlayer = data.players.find(p => p.saidUno)
-        const prevUnoPlayer = prev?.players?.find(p => p.saidUno)
-        if (unoPlayer && unoPlayer.id !== prevUnoPlayer?.id) {
-          setUnoAnnouncement(unoPlayer.name)
-          setTimeout(() => setUnoAnnouncement(null), 2000)
-        }
+  const isMobile = window.innerWidth < 600
 
-        if (prev) {
-          const prevPlayer = prev.players[prev.currentPlayerIndex]
-          const currPlayer = data.players[prev.currentPlayerIndex]
-          if (prevPlayer && currPlayer) {
-            const prevCardCount = prevPlayer.hand.length
-            const currCardCount = currPlayer.hand.length
-            const topCard = data.discardPile[data.discardPile.length - 1]
-            const prevTop = prev.discardPile[prev.discardPile.length - 1]
+  useEffect(() => {
+    connect(() => {
+      subscribe(`/topic/game/${roomId}`, (data) => {
+        setGameState(prev => {
+          const unoPlayer = data.players.find(p => p.saidUno)
+          const prevUnoPlayer = prev?.players?.find(p => p.saidUno)
+          if (unoPlayer && unoPlayer.id !== prevUnoPlayer?.id) {
+            setUnoAnnouncement(unoPlayer.name)
+            setTimeout(() => setUnoAnnouncement(null), 2000)
+          }
 
-            if (currCardCount < prevCardCount && topCard?.id !== prevTop?.id) {
-              const cardLabel = topCard.type === 'NUMBER'
-               ? `${topCard.color} ${topCard.number}`
-                : topCard.type === 'SKIP' ? `${topCard.color} Skip`
-                : topCard.type === 'REVERSE' ? `${topCard.color} Reverse`
-                : topCard.type === 'DRAW_TWO' ? `${topCard.color} +2`
-                : topCard.type === 'WILD' ? 'Wild'
-                : topCard.type === 'WILD_DRAW_FOUR' ? 'Wild +4'
-                : `${topCard.color} ${topCard.type}`
-              setGameLog(log => [`${prevPlayer.name} played ${cardLabel}`, ...log].slice(0, 8))
-            } else if (currCardCount > prevCardCount) {
-              setGameLog(log => [`${prevPlayer.name} drew a card`, ...log].slice(0, 8))
+          if (prev) {
+            const prevPlayer = prev.players[prev.currentPlayerIndex]
+            const currPlayer = data.players[prev.currentPlayerIndex]
+            if (prevPlayer && currPlayer) {
+              const prevCardCount = prevPlayer.hand.length
+              const currCardCount = currPlayer.hand.length
+              const topCard = data.discardPile[data.discardPile.length - 1]
+              const prevTop = prev.discardPile[prev.discardPile.length - 1]
+
+              if (currCardCount < prevCardCount && topCard?.id !== prevTop?.id) {
+                const cardLabel = topCard.type === 'NUMBER'
+                  ? `${topCard.color} ${topCard.number}`
+                  : topCard.type === 'SKIP' ? `${topCard.color} Skip`
+                  : topCard.type === 'REVERSE' ? `${topCard.color} Reverse`
+                  : topCard.type === 'DRAW_TWO' ? `${topCard.color} +2`
+                  : topCard.type === 'WILD' ? 'Wild'
+                  : topCard.type === 'WILD_DRAW_FOUR' ? 'Wild +4'
+                  : `${topCard.color} ${topCard.type}`
+                setGameLog(log => [`${prevPlayer.name} played ${cardLabel}`, ...log].slice(0, 8))
+              } else if (currCardCount > prevCardCount) {
+                setGameLog(log => [`${prevPlayer.name} drew a card`, ...log].slice(0, 8))
+              }
             }
           }
-        }
-        return data
-      })
+          return data
+        })
 
-      if (data.gameOver) {
-        const winner = data.players.find(p => p.id === data.winnerId)
-        setGameLog(log => [`🏆 ${winner?.name} won the game!`, ...log])
-        setTimeout(onGameEnd, 5000)
-      }
+        if (data.gameOver) {
+          const winner = data.players.find(p => p.id === data.winnerId)
+          setGameLog(log => [`🏆 ${winner?.name} won the game!`, ...log])
+          setTimeout(onGameEnd, 5000)
+        }
+      })
+      setTimeout(() => send('/game.getState', { roomId }), 100)
     })
-    setTimeout(() => send('/game.getState', { roomId }), 100)
-  })
-}, [roomId])
+  }, [roomId])
 
   const myPlayer = state?.players?.find(p => p.id === playerId)
   const isMyTurn = state?.players?.[state.currentPlayerIndex]?.id === playerId
@@ -143,9 +145,9 @@ useEffect(() => {
     } else {
       const top = state.discardPile[state.discardPile.length - 1]
       const valid = card.color === 'WILD'
-  ||     card.color === state.currentColor
-  ||    (card.type === 'NUMBER' && card.number === top.number)
-  ||    (card.type !== 'NUMBER' && card.type === top.type)
+        || card.color === state.currentColor
+        || (card.type === 'NUMBER' && card.number === top.number)
+        || (card.type !== 'NUMBER' && card.type === top.type)
       if (!valid) {
         setInvalidCard(card.id)
         setTimeout(() => setInvalidCard(null), 600)
@@ -198,6 +200,9 @@ useEffect(() => {
     )
   }
 
+  const cardCount = myPlayer?.hand?.length || 1
+  const cardWidth = Math.min(70, Math.floor((window.innerWidth - 48) / cardCount))
+
   return (
     <div style={styles.container}>
       {/* Header */}
@@ -224,9 +229,9 @@ useEffect(() => {
 
       {/* Game Log */}
       {gameLog.length > 0 && (
-        <div style={styles.gameLog}>
+        <div style={{ ...styles.gameLog, width: isMobile ? 130 : 220 }}>
           {gameLog.map((entry, i) => (
-            <div key={i} style={{ ...styles.logEntry, opacity: 1 - i * 0.1 }}>
+            <div key={i} style={{ ...styles.logEntry, opacity: 1 - i * 0.1, fontSize: isMobile ? 10 : 12 }}>
               {entry}
             </div>
           ))}
@@ -241,7 +246,7 @@ useEffect(() => {
         </div>
         {topCard && (
           <div>
-            <CardComponent card={topCard} disabled />
+            <CardComponent card={topCard} disabled width={70} />
             <p style={styles.pileLabel}>Top Card</p>
           </div>
         )}
@@ -280,6 +285,7 @@ useEffect(() => {
               onClick={() => handlePlayCard(card)}
               disabled={!isMyTurn}
               invalid={invalidCard === card.id}
+              width={cardWidth}
             />
           ))}
         </div>
@@ -291,29 +297,29 @@ useEffect(() => {
 const styles = {
   container: { minHeight: '100vh', background: '#1a6b3c', display: 'flex', flexDirection: 'column', fontFamily: 'sans-serif' },
   center: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'sans-serif' },
-  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', background: 'rgba(0,0,0,0.3)' },
-  title: { color: '#fff', margin: 0, fontSize: 24 },
-  turnBadge: { background: 'rgba(255,255,255,0.2)', color: '#fff', padding: '6px 14px', borderRadius: 20, fontSize: 14 },
-  otherPlayers: { display: 'flex', justifyContent: 'center', gap: 20, padding: '16px 24px' },
-  otherPlayer: { background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '10px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 },
-  otherName: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-  cardCount: { color: '#aed6f1', fontSize: 12 },
+  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'rgba(0,0,0,0.3)' },
+  title: { color: '#fff', margin: 0, fontSize: 20 },
+  turnBadge: { background: 'rgba(255,255,255,0.2)', color: '#fff', padding: '4px 10px', borderRadius: 20, fontSize: 12 },
+  otherPlayers: { display: 'flex', justifyContent: 'center', gap: 12, padding: '8px 16px' },
+  otherPlayer: { background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '8px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 },
+  otherName: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
+  cardCount: { color: '#aed6f1', fontSize: 11 },
   unoBadge: { background: '#e74c3c', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 'bold' },
-  gameLog: { position: 'fixed', right: 16, top: 80, background: 'rgba(0,0,0,0.5)', borderRadius: 10, padding: '12px 16px', width: 220, maxHeight: 280, overflow: 'hidden' },
-  logEntry: { color: '#fff', fontSize: 12, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.1)' },
-  playArea: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 40, flex: 1, padding: 24 },
+  gameLog: { position: 'fixed', right: 8, top: 60, background: 'rgba(0,0,0,0.5)', borderRadius: 10, padding: '8px 12px', maxHeight: 200, overflow: 'hidden' },
+  logEntry: { color: '#fff', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.1)' },
+  playArea: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 24, flex: 1, padding: 16 },
   drawPile: { display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' },
   deckCard: { width: 70, height: 105, background: '#2c3e50', borderRadius: 8, border: '3px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: 'white' },
   pileLabel: { color: '#fff', textAlign: 'center', margin: '8px 0 0', fontSize: 12 },
   colorPicker: { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,0.4)', zIndex: 100 },
   unoAnnouncement: { position: 'fixed', top: '40%', left: '50%', transform: 'translate(-50%,-50%)', background: '#e74c3c', color: '#fff', fontSize: 36, fontWeight: 'bold', padding: '24px 48px', borderRadius: 20, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', zIndex: 200, letterSpacing: 2 },
-  handSection: { background: 'rgba(0,0,0,0.3)', padding: '16px 24px' },
-  handLabel: { color: '#fff', margin: '0 0 12px', fontSize: 14 },
-  hand: { display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 },
-  unoSection: { display: 'flex', justifyContent: 'center', padding: '12px 0' },
-  unoBtn: { padding: '14px 48px', background: '#e74c3c', color: '#fff', border: '4px solid #fff', borderRadius: 50, fontSize: 24, fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,0.4)', letterSpacing: 2 },
+  handSection: { background: 'rgba(0,0,0,0.3)', padding: '12px 16px' },
+  handLabel: { color: '#fff', margin: '0 0 8px', fontSize: 13 },
+  hand: { display: 'flex', gap: 4, flexWrap: 'nowrap', justifyContent: 'center', paddingBottom: 8 },
+  unoSection: { display: 'flex', justifyContent: 'center', padding: '8px 0' },
+  unoBtn: { padding: '12px 40px', background: '#e74c3c', color: '#fff', border: '4px solid #fff', borderRadius: 50, fontSize: 22, fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,0.4)', letterSpacing: 2 },
   winScreen: { minHeight: '100vh', background: '#1a6b3c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' },
-  winCard: { background: 'rgba(0,0,0,0.7)', borderRadius: 20, padding: '48px 64px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', minWidth: 340 },
+  winCard: { background: 'rgba(0,0,0,0.7)', borderRadius: 20, padding: '48px 64px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', minWidth: 300 },
   winEmoji: { fontSize: 80, marginBottom: 16 },
   winTitle: { fontSize: 48, fontWeight: 'bold', margin: '0 0 8px' },
   winSubtitle: { color: '#aaa', fontSize: 18, margin: '0 0 24px' },
